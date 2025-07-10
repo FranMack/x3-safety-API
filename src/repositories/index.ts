@@ -1,0 +1,1 @@
+export { VectorDocRepository } from "./vectorDoc.repository";
