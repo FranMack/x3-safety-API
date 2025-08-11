@@ -1,10 +1,8 @@
 import { Router } from "express";
-import { AssistantController } from "../controllers";
-import { VectorDocRepository } from "../repositories";
-import { AsssistantService } from "../services/assistant.service";
-import { upload } from "../middlewares/multer.middleware";
-import { VectorizeContentService } from "../services/vectorizeContent.service";
 import { VectorizeContentController } from "../controllers/vectorizeContent.controller";
+import { upload } from "../middlewares/multer.middleware";
+import { VectorDocRepository } from "../repositories";
+import { VectorizeContentService } from "../services/vectorizeContent.service";
 
 export class VectorizeContentRoute {
   static routes(): Router {
@@ -14,7 +12,7 @@ export class VectorizeContentRoute {
     const service = new VectorizeContentService(repository);
     const controller = new VectorizeContentController(service);
 
-    router.post("/upload",upload.single('file'), controller.uploadPdf);
+    router.post("/upload", upload.single("file"), controller.uploadPdf);
 
     return router;
   }

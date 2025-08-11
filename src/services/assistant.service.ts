@@ -11,11 +11,19 @@ type Message = {
   content: string;
 };
 
-export class AsssistantService {
+type UserThreadData = {
+  history: Message[];
+  lastActivity: number; // timestamp en ms
+};
+
+export class AssistantService {
   // ⬇️ Creamos un mapa para guardar los hilos por usuario
-  private userThreads = new Map<string, Message[]>();
+  private userThreads = new Map<string, UserThreadData>();
   private openai = new OpenAI({ apiKey: envs.OPEN_IA_API_KEY });
-  constructor(private readonly vectorDocRepository: VectorDocRepository) {}
+
+ constructor(private readonly vectorDocRepository: VectorDocRepository) {
+  this.startCleanup();
+}
 
   async getEmbedding(text: string): Promise<number[]> {
     const res = await this.openai.embeddings.create({
@@ -42,7 +50,12 @@ export class AsssistantService {
       score: this.cosineSimilarity(queryEmbedding, doc.embedding),
     }));
 
-    return scored.sort((a, b) => b.score - a.score).slice(0, topK);
+    const topDocs = scored
+      .filter((d) => d.score > 0.75) // umbral ajustable
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topK);
+
+    return topDocs;
   }
 
   async userQuestion(chatInfo: ChatDto) {
@@ -54,36 +67,66 @@ export class AsssistantService {
 
       const baseSystemPrompt = basePrompt;
 
-      const dinamicSystemPrompt = buildSystemPrompt(contextText);
+      //const dinamicSystemPrompt = buildSystemPrompt(contextText);
 
-      let history = this.userThreads.get(userId);
 
-      if (!history) {
-        history = [{ role: "system", content: baseSystemPrompt }];
-        this.userThreads.set(userId, history);
+      let threadData = this.userThreads.get(userId);
+
+      if (!threadData) {
+        threadData = {
+          history: [{ role: "system", content: baseSystemPrompt }],
+          lastActivity: Date.now(),
+        };
+        this.userThreads.set(userId, threadData);
       }
 
-      // ➕ Añadir nuevo mensaje del usuario
-      history.push({
+      threadData.history.push({
         role: "user",
         content: `Contexto relevante:\n${contextText}\n\n${question}`,
       });
 
+      threadData.lastActivity = Date.now();
 
-      console.log("xxxxxxxxxxxxx",contextText)
+      if (threadData.history.length > 20) {
+        threadData.history = [
+          threadData.history[0],
+          ...threadData.history.slice(-18),
+        ];
+        threadData = {
+          history: threadData.history,
+          lastActivity: Date.now(),
+        };
+        this.userThreads.set(userId, threadData);
+      }
+
+      console.log("=================>", userId);
+      console.log("xxxxxxxxxxxxx", contextText);
 
       const response = await this.openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: history,
+        model: "gpt-4o-mini",
+        messages: threadData.history,
       });
 
       const llMResponse = response.choices[0].message.content ?? "";
       // ➕ Añadir respuesta de la IA al historial
-      history.push({ role: "assistant", content: llMResponse });
+      threadData.history.push({ role: "assistant", content: llMResponse });
+       this.userThreads.set(userId, threadData);
 
       return llMResponse;
     } catch (error) {
       throw error;
     }
   }
+
+  private startCleanup(intervalMs = 60_000, maxIdleMs = 10 * 60_000) {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [userId, { lastActivity }] of this.userThreads.entries()) {
+      if (now - lastActivity > maxIdleMs) {
+        this.userThreads.delete(userId);
+        console.log(`🗑️ Conversación con ${userId} eliminada por inactividad.`);
+      }
+    }
+  }, intervalMs);
+}
 }

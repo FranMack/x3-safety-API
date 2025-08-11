@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import { ChatDto } from "../dtos";
 import { CustomError, handleError } from "../errors";
-import { AsssistantService } from "../services/assistant.service";
+import { AssistantService } from "../services/assistant.service";
 
 export class AssistantController {
-  constructor(private readonly assistantService: AsssistantService) {}
+  constructor(private readonly assistantService: AssistantService) {}
 
   userQuestion = async (req: Request, res: Response) => {
     try {
