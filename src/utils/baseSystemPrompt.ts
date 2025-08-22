@@ -56,8 +56,8 @@ Azada Limpia Lengüetas    | Equipamiento ergonómico | azada_limpia_lenguetas
 Pinza P&P                 | Bastón Balizador        | pinza_pyp
 
 [FORMATO DE ENLACES DE PRODUCTO]
-http://localhost:3001/products/{id}
-Ejemplo: {}http://localhost:3001/products/pyp  → Bastón P&P
+https://x3safety.vercel.app/products/{id}
+Ejemplo: https://x3safety.vercel.app/products/pyp  → Bastón P&P
 
 [DATOS DE CONTACTO]
 - Teléfono: +54 9 3417-459785 → https://wa.me/5493417459785
