@@ -2,7 +2,6 @@ import OpenAI from "openai";
 import { envs } from "../config";
 import { ChatDto } from "../dtos";
 import { VectorDocRepository } from "../repositories";
-import { buildSystemPrompt } from "../utils";
 import { basePrompt } from "../utils/baseSystemPrompt";
 
 // ⬇️ Definimos el tipo de mensaje
@@ -21,9 +20,9 @@ export class AssistantService {
   private userThreads = new Map<string, UserThreadData>();
   private openai = new OpenAI({ apiKey: envs.OPEN_IA_API_KEY });
 
- constructor(private readonly vectorDocRepository: VectorDocRepository) {
-  this.startCleanup();
-}
+  constructor(private readonly vectorDocRepository: VectorDocRepository) {
+    this.startCleanup();
+  }
 
   async getEmbedding(text: string): Promise<number[]> {
     const res = await this.openai.embeddings.create({
@@ -69,7 +68,6 @@ export class AssistantService {
 
       //const dinamicSystemPrompt = buildSystemPrompt(contextText);
 
-
       let threadData = this.userThreads.get(userId);
 
       if (!threadData) {
@@ -99,9 +97,6 @@ export class AssistantService {
         this.userThreads.set(userId, threadData);
       }
 
-      console.log("=================>", userId);
-      console.log("xxxxxxxxxxxxx", contextText);
-
       const response = await this.openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: threadData.history,
@@ -110,7 +105,7 @@ export class AssistantService {
       const llMResponse = response.choices[0].message.content ?? "";
       // ➕ Añadir respuesta de la IA al historial
       threadData.history.push({ role: "assistant", content: llMResponse });
-       this.userThreads.set(userId, threadData);
+      this.userThreads.set(userId, threadData);
 
       return llMResponse;
     } catch (error) {
@@ -119,14 +114,16 @@ export class AssistantService {
   }
 
   private startCleanup(intervalMs = 60_000, maxIdleMs = 10 * 60_000) {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [userId, { lastActivity }] of this.userThreads.entries()) {
-      if (now - lastActivity > maxIdleMs) {
-        this.userThreads.delete(userId);
-        console.log(`🗑️ Conversación con ${userId} eliminada por inactividad.`);
+    setInterval(() => {
+      const now = Date.now();
+      for (const [userId, { lastActivity }] of this.userThreads.entries()) {
+        if (now - lastActivity > maxIdleMs) {
+          this.userThreads.delete(userId);
+          console.log(
+            `🗑️ Conversación con ${userId} eliminada por inactividad.`
+          );
+        }
       }
-    }
-  }, intervalMs);
-}
+    }, intervalMs);
+  }
 }
